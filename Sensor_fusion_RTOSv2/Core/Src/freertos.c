@@ -447,7 +447,7 @@ void StartDiagnosticTask(void const * argument)
   {
     osDelay(6000);
 
-    if(0){
+    if(1){
     	  printf("--- Statystyki Czasu Wykonania Zadan ---\r\n");
     	  printf("Zadanie         \tCzas Abs. \t%% Czasu\r\n");
     	  printf("-------------------------------------------\r\n");
