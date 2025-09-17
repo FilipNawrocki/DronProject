@@ -25,7 +25,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-// Potrzebne nagłówki
 #include <stdio.h>
 #include "math.h"
 #include "i2c_dma_manager.h"
@@ -55,7 +54,7 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
-// Globalne uchwyty z CubeMX - teraz ich użyjemy!
+// Globalne uchwyty z CubeMX
 extern I2C_HandleTypeDef hi2c1;
 extern TIM_HandleTypeDef htim3;
 extern UART_HandleTypeDef huart5;
@@ -75,8 +74,6 @@ volatile float debug_pwm3 = 0.0f;
 volatile float debug_pwm4 = 0.0f;
 volatile float pitch_error_new = 0.0f;
 volatile float pitch_error = 0.0f;
-uint16_t Data_RC_Controler[16];
-
 
 /* USER CODE END Variables */
 osThreadId SensorTaskHandle;
@@ -108,7 +105,6 @@ void vApplicationGetIdleTaskMemory( StaticTask_t **ppxIdleTaskTCBBuffer, StackTy
 /* Hook prototypes */
 void configureTimerForRunTimeStats(void);
 unsigned long getRunTimeCounterValue(void);
-void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 
 /* USER CODE BEGIN 1 */
 /* Functions needed when configGENERATE_RUN_TIME_STATS is on */
@@ -122,22 +118,6 @@ __weak unsigned long getRunTimeCounterValue(void)
 return 0;
 }
 /* USER CODE END 1 */
-
-/* USER CODE BEGIN 4 */
-__weak void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
-{
-   /* Run time stack overflow checking is performed if
-   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
-   called if a stack overflow is detected. */
-	   // Ta funkcja jest wywoływana, gdy stos zadania się przepełni.
-	   printf("\n\n!!! KRYTYCZNY BLAD: PRZEPELNIENIE STOSU (STACK OVERFLOW) !!!\n");
-	   printf("Zadanie, ktore spowodowalo blad: %s\n", (char*)pcTaskName);
-
-	   // Zatrzymaj system, aby można było podłączyć debugger.
-	   // Możesz tu też mrugać diodą błędu w nieskończoność.
-	   while(1);
-}
-/* USER CODE END 4 */
 
 /* USER CODE BEGIN GET_IDLE_TASK_MEMORY */
 static StaticTask_t xIdleTaskTCBBuffer;
@@ -240,8 +220,8 @@ void StartDefaultTask(void const * argument)
   /* USER CODE BEGIN StartDefaultTask */
     osSemaphoreWait(initDoneSemHandle, osWaitForever);
 
-    static volatile uint8_t mpu_dma_buffer[16]; // Margines bezpieczeństwa
-    static volatile uint8_t lps_dma_buffer[8];  // Margines bezpieczeństwa
+    static volatile uint8_t mpu_dma_buffer[16];
+    static volatile uint8_t lps_dma_buffer[8];
 
     I2C_DMA_Transaction_t mpu_transaction;
     mpu_transaction.hi2c = &hi2c1;
@@ -293,7 +273,7 @@ void StartDefaultTask(void const * argument)
             continue;
         }
 
-      if(i >= 4){ // Bezpieczniej >=
+      if(i >= 4){
           if (I2C_DMA_Read(&lps_transaction, LPS25HB_ADDR, LPS25HB_PRESS_OUT_XL | 0x80) == HAL_OK) {
               sensor_data_pocket.pressure_raw = (uint32_t)((lps_dma_buffer[2] << 16) | (lps_dma_buffer[1] << 8) | lps_dma_buffer[0]);
               sensor_data_pocket.baro_data_updated = 1;
@@ -320,7 +300,6 @@ void StartDefaultTask(void const * argument)
 void StartTask02(void const * argument)
 {
   /* USER CODE BEGIN StartTask02 */
-    // --- POPRAWKA: Wszystkie duże zmienne lokalne jako 'static' ---
     static float gyro_bias[3];
     static float roll_offset, pitch_offset;
     static KalmanRollPich orientation_ekf;
@@ -331,7 +310,6 @@ void StartTask02(void const * argument)
     static OrientationData_t processed_data;
     static uint32_t last_predict_time = 0;
 
-    // Funkcje inicjalizacyjne mogą używać printf, bo są wołane tylko raz
     if (mpu6500_init_DMA(&hi2c1) != HAL_OK) {
         printf("KRYTYCZNY BLAD: Inicjalizacja MPU-6500\n");
         Error_Handler();
@@ -381,7 +359,6 @@ void StartTask02(void const * argument)
             }
             last_predict_time = received_raw_data.timestamp_mpu;
 
-            // Zmienne lokalne w pętli są OK, bo są małe
             float acc_mps2[3] = {
                     (float)received_raw_data.ax / ACCEL_SENSITIVITY * G_CONST,
                     (float)received_raw_data.ay / ACCEL_SENSITIVITY * G_CONST,
@@ -464,7 +441,6 @@ void StartDiagnosticTask(void const * argument)
             }
             else
             {
-                // W przeciwnym razie po prostu wypisz znak.
                 __io_putchar(*ptr);
             }
             ptr++;
@@ -528,18 +504,56 @@ void StartControl_Task(void const * argument)
           integral_yaw_error = 0.0f;
           continue;
       }
+      // --- PID value
+      float kp_roll;
+      float ki_roll;
+      float kd_roll;
+
+	  float kp_pitch;
+	  float ki_pitch;
+	  float kd_pitch;
+
+	  float kp_yaw;
+	  float ki_yaw;
+	  float kd_yaw;
+
+      if(1){
+    	  kp_roll	=KP_ROLL;
+		  ki_roll	=KI_ROLL;
+		  kd_roll	=KD_ROLL;
+
+		  kp_pitch	=KP_PITCH;
+		  ki_pitch	=KP_PITCH;
+		  kd_pitch	=KD_PITCH;
+
+		  kp_yaw	=KP_YAW;
+		  ki_yaw	=KI_YAW;
+		  kd_yaw	=KD_YAW;
+      }else{
+    	  kp_roll	=map(Uart_Comunication_Data.vrA, 1000, 2000, 0, 150);
+		  ki_roll	=KI_ROLL;
+		  kd_roll	=map(Uart_Comunication_Data.vrB, 1000, 2000, 0, 100);
+
+		  kp_pitch	=KP_PITCH;
+		  ki_pitch	=KP_PITCH;
+		  kd_pitch	=KD_PITCH;
+
+		  kp_yaw	=KP_YAW;
+		  ki_yaw	=KI_YAW;
+		  kd_yaw	=KD_YAW;
+      }
+
 
       // --- Obliczenia PID dla każdej osi ---
-
       // ROLL
       float roll_error = rc_commands.roll_desired_rad - current_state.roll_rad;
       if (fabsf(roll_error) < 0.02f) {
           roll_error = 0.0f;
       }
-      integral_roll_error += KI_ROLL * roll_error * CONTROL_LOOP_PERIOD_S;
+      integral_roll_error += ki_roll * roll_error * CONTROL_LOOP_PERIOD_S;
       integral_roll_error = constrain(integral_roll_error, -INTEGRAL_LIMIT_RP, INTEGRAL_LIMIT_RP);
-      float derivative_roll = -KD_ROLL * current_state.gx_rps;
-      float roll_torque_cmd = KP_ROLL * roll_error + integral_roll_error + derivative_roll;
+      float derivative_roll = -kd_roll * current_state.gx_rps;
+      float roll_torque_cmd = kp_roll * roll_error + integral_roll_error + derivative_roll;
 
       // PITCH
       pitch_error = rc_commands.pitch_desired_rad - current_state.pitch_rad;
@@ -574,9 +588,9 @@ void StartControl_Task(void const * argument)
 	  */
 
       uint16_t pwm1 = (uint16_t)(base_throttle_pwm + pitch_torque_cmd + roll_torque_cmd);
-      uint16_t pwm2 = (uint16_t)(base_throttle_pwm - pitch_torque_cmd + roll_torque_cmd - 10.0f);
-      uint16_t pwm3 = (uint16_t)(base_throttle_pwm - pitch_torque_cmd - roll_torque_cmd - 40.0f);
-      uint16_t pwm4 = (uint16_t)(base_throttle_pwm + pitch_torque_cmd - roll_torque_cmd - 10.0f);
+      uint16_t pwm2 = (uint16_t)(base_throttle_pwm - pitch_torque_cmd + roll_torque_cmd - 0.0f);
+      uint16_t pwm3 = (uint16_t)(base_throttle_pwm - pitch_torque_cmd - roll_torque_cmd - 0.0f);
+      uint16_t pwm4 = (uint16_t)(base_throttle_pwm + pitch_torque_cmd - roll_torque_cmd - 0.0f);
 
       if(Uart_Comunication_Data.swA==1000)
       {
@@ -620,49 +634,67 @@ void StartComunicationTask(void const * argument)
 {
   /* USER CODE BEGIN StartComunicationTask */
 	static uint8_t RxData[64];
-	//uint16_t Data_RC_Controler[16];
 	static UART_Data_t Uart_Comunication_Data;
 	HAL_UART_Receive_DMA(&huart5, RxData, 32);
 
   /* Infinite loop */
   for(;;)
   {
-	  uint32_t notification_value = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(500));
-	  if (notification_value > 0) {
-		  int Start_byte_index;
-		  for(int i=0;i<=15; i++)
-		  {
-			  if(RxData[i*2 + 2] == 0x40 && RxData[i*2 + 1] == 0x20){
-				  Start_byte_index = i;
-			  }
-		  }
-		  for(int i=0;i<=14; i++)
-		  {
-			  int lsb_index = (i*2 + 3 + Start_byte_index) % 32;
-			  int msb_index = (i*2 + 4 + Start_byte_index) % 32;
+	      uint32_t notification_value = ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(100));
 
-			  Data_RC_Controler[i] = (uint16_t)((RxData[msb_index] << 8) | RxData[lsb_index]);
+	      if (notification_value > 0) {
+	          int start_byte_index = -1;
 
-			  Uart_Comunication_Data.roll = Data_RC_Controler[0];
-			  Uart_Comunication_Data.pitch = Data_RC_Controler[1];
-			  Uart_Comunication_Data.throttle = Data_RC_Controler[2];
-			  Uart_Comunication_Data.yaw = Data_RC_Controler[3];
-			  Uart_Comunication_Data.swA = Data_RC_Controler[4];
-			  Uart_Comunication_Data.swB = Data_RC_Controler[5];
-			  Uart_Comunication_Data.swC = Data_RC_Controler[6];
-			  Uart_Comunication_Data.swD = Data_RC_Controler[7];
-			  Uart_Comunication_Data.vrA = Data_RC_Controler[8];
-			  Uart_Comunication_Data.vrB = Data_RC_Controler[9];
+	          for (int i = 0; i < 31; i++) {
+	              if (RxData[i] == 0x20 && RxData[i+1] == 0x40) {
+	                  start_byte_index = i;
+	                  break;
+	              }
+	          }
 
-			  osMessagePut(UartDMADataQueueHandle, (uint32_t)&Uart_Comunication_Data, 0);
-		  }
+	          if (start_byte_index == -1) {
+	              HAL_UART_Receive_DMA(&huart5, RxData, 32);
+	              continue;
+	          }
 
-	  } else {
-		  printf("comunication task timeout\n");
-          HAL_UART_AbortReceive(&huart5);
-          HAL_UART_Receive_DMA(&huart5, RxData, 32);
-	  }
-    osDelay(20);
+	          uint16_t checksum_calculated = 0xFFFF;
+	          for (int i = 0; i < 30; i++) {
+	              checksum_calculated -= RxData[(start_byte_index + i) % 32];
+	          }
+	          uint16_t checksum_received = (uint16_t)(RxData[(start_byte_index + 31) % 32] << 8 | RxData[(start_byte_index + 30) % 32]);
+
+	          if (checksum_calculated != checksum_received) {
+	              HAL_UART_Receive_DMA(&huart5, RxData, 32);
+	              continue;
+	          }
+
+	          uint16_t channels[14];
+	          for(int i = 0; i < 14; i++) {
+	              int lsb_index = (start_byte_index + 2 + i * 2) % 32;
+	              int msb_index = (start_byte_index + 3 + i * 2) % 32;
+	              channels[i] = (uint16_t)((RxData[msb_index] << 8) | RxData[lsb_index]);
+	          }
+
+	          Uart_Comunication_Data.roll     = channels[0];
+	          Uart_Comunication_Data.pitch    = channels[1];
+	          Uart_Comunication_Data.throttle = channels[2];
+	          Uart_Comunication_Data.yaw      = channels[3];
+	          Uart_Comunication_Data.swA      = channels[4];
+	          Uart_Comunication_Data.swB      = channels[5];
+	          Uart_Comunication_Data.swC      = channels[6];
+	          Uart_Comunication_Data.swD      = channels[7];
+	          Uart_Comunication_Data.vrA      = channels[8];
+	          Uart_Comunication_Data.vrB      = channels[9];
+
+	          osMessagePut(UartDMADataQueueHandle, (uint32_t)&Uart_Comunication_Data, 0);
+
+	          HAL_UART_Receive_DMA(&huart5, RxData, 32);
+
+	      } else {
+	          printf("comunication task timeout\n");
+	          HAL_UART_AbortReceive(&huart5);
+	          HAL_UART_Receive_DMA(&huart5, RxData, 32);
+	      }
   }
   /* USER CODE END StartComunicationTask */
 }

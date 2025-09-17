@@ -18,7 +18,6 @@ void read_and_map_rc_commands(RC_Commands_t* commands, UART_Data_t* raw_Data) {
     //commands->yaw_desired_rad = map(raw_Data->yaw, 1000.0f, 2000.0f, -MAX_YAW_CMD_RAD, MAX_YAW_CMD_RAD);
 }
 
-// Funkcja ustawiająca PWM dla wszystkich 4 silników
 void set_motors_pwm(uint16_t pwm1, uint16_t pwm2, uint16_t pwm3, uint16_t pwm4) {
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_1, pwm1); // Motor 1 (prawy-przód, CW)
     __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_2, pwm2); // Motor 2 (prawy-tył, CCW)

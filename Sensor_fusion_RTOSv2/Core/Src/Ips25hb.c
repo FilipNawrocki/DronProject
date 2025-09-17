@@ -20,7 +20,7 @@ HAL_StatusTypeDef  pressureToAltitude(float pressure_hPa, float* altitude_out) {
     float altitiude =  44330.0f * temp;
     *altitude_out = altitiude;
 
-    return HAL_OK; // Zwróć sukces
+    return HAL_OK;
 }
 
 float lps25hb_read_pressure(I2C_HandleTypeDef* hi2c)
@@ -33,7 +33,7 @@ float lps25hb_read_pressure(I2C_HandleTypeDef* hi2c)
          if (status != HAL_OK) {
              printf("LPS25HB: Pressure read failed (status: %d)\n", status);
              HAL_I2C_DeInit(hi2c);
-             HAL_Delay(5); // Krótka pauza
+             HAL_Delay(5);
              MX_I2C1_Init();
              return -1.0f;
          }

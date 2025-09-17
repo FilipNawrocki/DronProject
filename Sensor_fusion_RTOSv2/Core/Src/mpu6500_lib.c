@@ -13,8 +13,6 @@
 #include "FreeRTOS.h"
 #include "i2c_dma_manager.h"
 
-// Stała grawitacji
-//const float G_CONST = 9.81f;
 static float offset_pitch, offset_roll;
 static KalmanRollPich orientation_ekf;
 
@@ -33,7 +31,6 @@ HAL_StatusTypeDef mpu6500_calibrate_gyro_bias(I2C_HandleTypeDef* hi2c, float* gy
         gz_sum += gz;
         HAL_Delay(5);
     }
-    // Oblicz średni bias w surowych jednostkach i przelicz na radiany/sekundę
     float gyro_bias_x = ((float)gx_sum / num_samples) / 131.0f * (M_PI / 180.0f);
     float gyro_bias_y = ((float)gy_sum / num_samples) / 131.0f * (M_PI / 180.0f);
     float gyro_bias_z = ((float)gz_sum / num_samples) / 131.0f * (M_PI / 180.0f);
@@ -63,19 +60,15 @@ HAL_StatusTypeDef mpu6500_calculate_orientation_offsets(I2C_HandleTypeDef* hi2c,
         acc_x_sum += raw_ax;
         acc_y_sum += raw_ay;
         acc_z_sum += raw_az;
-        HAL_Delay(10); // Opóźnienie między próbkami
+        HAL_Delay(10);
     }
     float avg_ax = (float)acc_x_sum / num_samples;
     float avg_ay = (float)acc_y_sum / num_samples;
     float avg_az = (float)acc_z_sum / num_samples;
 
-    // Oblicz kąty na podstawie uśrednionych odczytów (w radianach)
     *offset_roll = atan2f(avg_ay, sqrtf(avg_ax * avg_ax + avg_az * avg_az));
     *offset_pitch = atan2f(-avg_ax, sqrtf(avg_ay * avg_ay + avg_az * avg_az));
 
-    // Alternatywnie, jeśli wiemy, że roll jest mały:
-    // *offset_roll = atan2f(avg_ay, avg_az);
-    // *offset_pitch = atan2f(-avg_ax, avg_az);
 
 
     return HAL_OK;

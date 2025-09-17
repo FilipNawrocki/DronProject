@@ -2,8 +2,6 @@
 #include "task.h"
 
 static osMutexId g_i2c_bus_mutex;
-
-// --- DEFINICJA ZMIENNEJ GLOBALNEJ ---
 volatile osThreadId task_waiting_for_i2c1_dma = NULL;
 
 void I2C_DMA_Manager_Init(void) {
